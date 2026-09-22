@@ -2,8 +2,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+
+# Create FastAPI application
 app = FastAPI()
 
+
+# Allow frontend to communicate with backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -12,6 +16,7 @@ app.add_middleware(
 )
 
 
+# Employee structure
 class Employee(BaseModel):
     id: int
     name: str
@@ -19,6 +24,7 @@ class Employee(BaseModel):
     role: str
 
 
+# Temporary employee data
 employees = [
     {
         "id": 1,
@@ -56,6 +62,7 @@ def get_employees():
 # Get employee by ID
 @app.get("/employees/{employee_id}")
 def get_employee_by_id(employee_id: int):
+
     for employee in employees:
         if employee["id"] == employee_id:
             return employee
@@ -66,9 +73,52 @@ def get_employee_by_id(employee_id: int):
     )
 
 
+# Add a new employee
+@app.post("/api/employees", status_code=201)
+def add_employee(employee: Employee):
+
+    # Check whether employee ID already exists
+    for existing_employee in employees:
+        if existing_employee["id"] == employee.id:
+            raise HTTPException(
+                status_code=400,
+                detail="Employee ID already exists"
+            )
+
+    # Convert Employee object into a dictionary
+    new_employee = employee.model_dump()
+
+    # Add employee to the list
+    employees.append(new_employee)
+
+    return {
+        "message": "Employee added successfully",
+        "employee": new_employee
+    }
+
+
+# Delete one employee using ID
+@app.delete("/api/employees/{employee_id}")
+def delete_employee_by_id(employee_id: int):
+
+    for employee in employees:
+        if employee["id"] == employee_id:
+            employees.remove(employee)
+
+            return {
+                "message": f"Employee {employee_id} deleted successfully"
+            }
+
+    raise HTTPException(
+        status_code=404,
+        detail="Employee not found"
+    )
+
+
 # Update employee by ID
 @app.put("/employees/{employee_id}")
 def update_employee(employee_id: int, updated_employee: Employee):
+
     for employee in employees:
         if employee["id"] == employee_id:
             employee["name"] = updated_employee.name
@@ -81,3 +131,14 @@ def update_employee(employee_id: int, updated_employee: Employee):
         status_code=404,
         detail="Employee not found"
     )
+
+
+# Delete all employees
+@app.delete("/api/employees")
+def delete_all_employees():
+
+    employees.clear()
+
+    return {
+        "message": "All employees deleted successfully"
+    }
